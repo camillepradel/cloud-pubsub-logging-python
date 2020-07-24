@@ -46,7 +46,7 @@ DEFAULT_POOL_SIZE = 1
 DEFAULT_RETRY_COUNT = 10
 
 
-def send_loop(client, q, topic, retry, logger, format_func,
+def send_loop(client, q, topic, retry, logger,
               publish_body):  # pragma: NO COVER
     """Process loop for indefinitely sending logs to Cloud Pub/Sub.
 
@@ -63,18 +63,18 @@ def send_loop(client, q, topic, retry, logger, format_func,
         client = get_pubsub_client()
     while True:
         try:
-            logs = q.get()
+            formated_logs = q.get()
         except Empty:
             continue
         try:
             body = {'messages':
-                    [{'data': compat_urlsafe_b64encode(format_func(r))}
-                        for r in logs]}
+                    [{'data': compat_urlsafe_b64encode(formated_log)}
+                        for formated_log in formated_logs]}
             publish_body(client, body, topic, retry)
         except errors.RecoverableError as e:
             # Records the exception and puts the logs back to the deque
             # and prints the exception to stderr.
-            q.put(logs)
+            q.put(formated_logs)
             logger.exception(e)
         except Exception as e:
             logger.exception(e)
@@ -116,12 +116,13 @@ class AsyncPubsubHandler(logging.Handler):
         for _ in range(worker_num):
             p = mp.Process(target=send_loop,
                            args=(client, self._q, topic, retry, stderr_logger,
-                                 self.format, publish_body))
+                                 publish_body))
             p.daemon = True
             p.start()
 
     def emit(self, record):
         """Puts the record to the internal queue."""
+        record = self.format(record)
         self._buf.append(record)
         if len(self._buf) == self._batch_size:
             self._q.put(self._buf)
