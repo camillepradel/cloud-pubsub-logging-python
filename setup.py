@@ -18,7 +18,8 @@ with open('README.rst', 'r') as fp:
     pubsub_logging_long_description = fp.read()
 
 REQUIREMENTS = [
-    'google-api-python-client >= 1.4.0'
+    'google-api-python-client >= 1.4.0',
+    'oauth2client >= 4.1.3',
 ]
 
 setup(
