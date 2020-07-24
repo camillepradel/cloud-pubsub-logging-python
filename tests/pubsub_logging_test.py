@@ -230,6 +230,26 @@ class AsyncPubsubHandlerTest(unittest.TestCase):
         with self.counter.lock:
             self.assertEqual(1, self.counter.cnt.value)
 
+    def mock_publish_body(self, client, body, topic, retry):
+        self.assertEqual(body, self.expected_body)
+
+    def test_formated_message(self):
+        """Tests if a formatter assigned to the handler is used."""
+        self.log_msg = 'Test message'
+        self.expected_payload = compat_urlsafe_b64encode(
+            'Test Formatter - test - CRITICAL - ' + self.log_msg)
+        self.expected_body = {'messages': [{'data': self.expected_payload}]}
+        self.handler = pubsub_logging.AsyncPubsubHandler(
+            topic=self.topic, client=self.mocked_client, retry=self.RETRY,
+            worker_num=1, publish_body=self.mock_publish_body)
+        self.handler.setFormatter(
+            logging.Formatter(
+                'Test Formatter - %(name)s - %(levelname)s - %(message)s'))
+        r = logging.LogRecord('test', logging.CRITICAL, None, 0, self.log_msg, [],
+                              None)
+        self.handler.emit(r)
+        self.handler.close()
+
     def test_handler_ignores_error(self):
         """Tests if the handler ignores errors and throws the logs away."""
         mock_publish_body = mock.MagicMock()
